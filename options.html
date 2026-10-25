@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ads+ V5 Settings</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:#0d0f14;color:#e8eaf0;margin:0;padding:26px;line-height:1.55}
+.w{max-width:760px;margin:0 auto}.brand{display:flex;align-items:center;gap:11px;margin-bottom:18px}.brand img{width:40px;height:40px;object-fit:contain}
+h1{font-size:22px;margin:0 0 4px}.c{color:#9aa3b6;font-size:13.5px;margin:0 0 18px}
+label.sw{display:flex;align-items:center;gap:10px;background:#141822;border:1px solid #232838;border-radius:10px;padding:13px 15px;margin-bottom:9px;cursor:pointer;font-size:14px}
+label.sw input{width:auto;margin:0}textarea{width:100%;box-sizing:border-box;height:260px;background:#141822;color:#e8eaf0;border:1px solid #232838;border-radius:10px;padding:13px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;line-height:1.5}
+button{background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;border:none;border-radius:9px;padding:11px 20px;font-size:14px;font-weight:650;cursor:pointer;margin-right:9px}.st{color:#10b981;font-size:13px;margin-left:6px}
+code{background:#141822;border:1px solid #232838;border-radius:5px;padding:1px 5px;font-size:12px}h2{font-size:15px;margin:26px 0 10px}
+</style>
+</head>
+<body>
+<div class="w">
+  <div class="brand"><img src="adsplus-logo.svg" alt="Ads+ logo"><div><h1>Ads+ Extension V5</h1><div class="c" style="margin:0">Ads config and display settings</div></div></div>
+  <p class="c">Changes apply to supported pages after saving. The default campaign is Ads+; no third-party demo ads are included.</p>
+  <label class="sw"><input type="checkbox" id="enabled"> Extension ON</label>
+  <label class="sw"><input type="checkbox" id="link"> Show clickable sponsored link</label>
+  <label class="sw"><input type="checkbox" id="video"> Video mode (only for ads with a video URL)</label>
+  <label class="sw"><input type="checkbox" id="sticky"> Pin card to the bottom and hide configured host-ad selectors</label>
+
+  <h2>Ads config (JSON)</h2>
+  <p class="c">Default ad links to <code>https://adsplusprof.me/</code>. Each ad supports <code>sponsor</code>, <code>text</code>, <code>desc</code>, <code>url</code>, optional <code>logo</code>, and optional <code>video</code>.</p>
+  <textarea id="ads" spellcheck="false" aria-label="Ads configuration JSON"></textarea>
+  <div style="margin-top:16px"><button id="save">Save settings</button><button id="reset" style="background:#141822;border:1px solid #232838">Reset to Ads+ ad</button><span class="st" id="st" role="status"></span></div>
+</div>
+<script src="options.js"></script>
+</body>
+</html>
