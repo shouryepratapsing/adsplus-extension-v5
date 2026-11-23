@@ -13,9 +13,6 @@ function savePopupSettings() {
       config[id] = document.getElementById(id).checked;
     });
     if (config.link === undefined) config.link = true;
-    if (!Array.isArray(config.ads) || !config.ads.length) {
-      config.ads = [{ id: "adsplus-home", sponsor: "Ads+", text: "Discover Ads+", desc: "Explore Ads+ at adsplusprof.me.", url: "https://adsplusprof.me/", logo: "adsplus-logo.svg" }];
-    }
     chrome.storage.local.set({ adsplus_cfg: config });
   });
 }
