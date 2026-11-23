@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ads+ V5.1 Staging</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:#0d0f14;color:#e8eaf0;margin:0;padding:26px;line-height:1.55}
+.w{max-width:680px;margin:0 auto}.brand{display:flex;align-items:center;gap:11px;margin-bottom:18px}.brand img{width:40px;height:40px;object-fit:contain}h1{font-size:22px;margin:0 0 4px}.muted{color:#9aa3b6;font-size:13.5px}
+.card{background:#141822;border:1px solid #232838;border-radius:12px;padding:16px;margin:12px 0}.status{font-size:14px;margin:8px 0}.on{color:#10b981}.off{color:#fbbf24}
+label{display:flex;align-items:center;gap:10px;cursor:pointer}.actions{margin-top:16px}button{background:#2563eb;color:#fff;border:0;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:650;cursor:pointer}
+code{background:#141822;border:1px solid #232838;border-radius:5px;padding:2px 5px}
+</style>
+</head>
+<body>
+<div class="w">
+  <div class="brand"><img src="adsplus-logo.svg" alt="Ads+ logo"><div><h1>Ads+ V5.1 staging</h1><div class="muted">Server-controlled link ads</div></div></div>
+  <p class="muted">The server controls platform and mobile feature flags. This page only controls the local browser kill switch. Creative assets, video ads and bottom ads are not configured here.</p>
+  <div class="card"><label><input type="checkbox" id="enabled"> Enable Ads+ on this browser</label></div>
+  <div class="card"><div id="api" class="status">Checking staging API…</div><div id="platforms" class="muted"></div></div>
+  <div class="actions"><button id="refresh">Refresh server config</button> <span class="muted" id="saved" role="status"></span></div>
+  <p class="muted">API: <code>https://adsplus-api-staging.onrender.com</code></p>
+</div>
+<script src="options.js"></script>
+</body>
+</html>
