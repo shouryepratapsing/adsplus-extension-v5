@@ -19,15 +19,6 @@
     console.warn.apply(console, a);
   }
 
-  var ADSPLUS_DEFAULT_ADS = [{
-    id: "adsplus-home",
-    sponsor: "Ads+",
-    text: "Discover Ads+",
-    desc: "Explore Ads+ at adsplusprof.me.",
-    url: "https://adsplusprof.me/",
-    logo: "adsplus-logo.svg"
-  }];
-
   /* Widening fallback: escape a narrow right-aligned message bubble. */
   function widen(el, ratio, maxLevels) {
     if (!el) return null;
@@ -98,14 +89,15 @@
     }
   }[SITE];
 
-  var cfg = { enabled: true, link: true, video: false, sticky: false, ads: ADSPLUS_DEFAULT_ADS };
-  var cursor = 0;
+  var cfg = { enabled: true, link: true, video: false, sticky: false };
   var boundBtn = null, boundComposer = null, onSend = null, onKey = null;
   var preKey = null, submitAt = 0;
   var lastSeenEl = null, lastSeenText = null, settling = true, settleTimer = null;
   var pendingEl = null, pendingAt = 0;
   var hostEl = null, rootEl = null, videoEl = null, dismissEl = null, unlockAt = 0, ticker = null;
   var activeUserEl = null;
+  var activeServeId = null, impressionTimer = null, impressionElapsed = 0;
+  var impressionLastAt = 0, impressionPending = false, impressionSent = false;
   var watchUser = null, watchKeep = null, watchAttach = null, watchDiff = null, styleEl = null;
 
   function q(selector) {
@@ -125,16 +117,6 @@
     if (settleTimer) clearTimeout(settleTimer);
     settling = true;
     settleTimer = setTimeout(function () { settling = false; settleTimer = null; }, ms || A.settleMs || 700);
-  }
-  function getAds() {
-    var ads = Array.isArray(cfg.ads) ? cfg.ads.filter(function (ad) {
-      return ad && typeof ad === "object" && (ad.text || ad.sponsor) && ad.url;
-    }) : [];
-    return ads.length ? ads : ADSPLUS_DEFAULT_ADS;
-  }
-  function pickAd() {
-    var ads = getAds();
-    return ads[cursor++ % ads.length] || ADSPLUS_DEFAULT_ADS[0];
   }
   function logoSource(ad) {
     var logo = ad && typeof ad.logo === "string" ? ad.logo.trim() : "";
@@ -172,8 +154,91 @@
     + ":host(.sticky){position:fixed;left:0;right:0;bottom:0;z-index:2147483000}"
     + ":host(.sticky) .card{margin:0;border-top:none;box-shadow:0 -1px 14px rgba(111,78,55,.16)}";
 
+  function sendBackgroundMessage(message) {
+    return new Promise(function (resolve, reject) {
+      chrome.runtime.sendMessage(message, function (response) {
+        if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
+        if (!response || !response.ok) return reject(new Error(response && response.error || "background_unavailable"));
+        resolve(response.data);
+      });
+    });
+  }
+
+  function randomIdempotencyKey() {
+    var bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    return Array.prototype.map.call(bytes, function (value) {
+      return value.toString(16).padStart(2, "0");
+    }).join("");
+  }
+
+  function stopImpressionTracking() {
+    if (impressionTimer) clearInterval(impressionTimer);
+    impressionTimer = null;
+    impressionElapsed = 0;
+    impressionLastAt = 0;
+  }
+
+  function recordVisibleImpression() {
+    if (!activeServeId || impressionSent || impressionPending) return;
+    impressionPending = true;
+    var serveId = activeServeId;
+
+    sendBackgroundMessage({
+      type: "ADSPLUS_RECORD_IMPRESSION",
+      payload: {
+        serve_id: serveId,
+        dwell_ms: 5000,
+        idempotency_key: randomIdempotencyKey()
+      }
+    }).then(function (result) {
+      impressionSent = true;
+      log("impression recorded", result && result.already ? "(already)" : "");
+    }).catch(function (error) {
+      warn("impression recording failed:", error.message);
+    }).then(function () {
+      impressionPending = false;
+    });
+  }
+
+  function startImpressionTracking() {
+    stopImpressionTracking();
+    if (!activeServeId || !hostEl) return;
+
+    impressionLastAt = Date.now();
+    impressionTimer = setInterval(function () {
+      if (!hostEl || !hostEl.isConnected) {
+        stopImpressionTracking();
+        return;
+      }
+
+      var now = Date.now();
+      var rect = hostEl.getBoundingClientRect();
+      var visible = document.visibilityState === "visible" &&
+        rect.width > 0 && rect.height > 0 &&
+        rect.bottom > 0 && rect.top < window.innerHeight &&
+        rect.right > 0 && rect.left < window.innerWidth;
+
+      if (visible) {
+        var delta = Math.max(0, now - impressionLastAt);
+        impressionElapsed += delta;
+      }
+      impressionLastAt = now;
+
+      if (impressionElapsed >= 5000) {
+        if (impressionTimer) clearInterval(impressionTimer);
+        impressionTimer = null;
+        recordVisibleImpression();
+      }
+    }, 250);
+  }
+
   function hideCard(silent) {
     if (ticker) { clearInterval(ticker); ticker = null; }
+    stopImpressionTracking();
+    activeServeId = null;
+    impressionPending = false;
+    impressionSent = false;
     if (hostEl && hostEl.parentNode) hostEl.parentNode.removeChild(hostEl);
     hostEl = null; rootEl = null; videoEl = null; dismissEl = null; activeUserEl = null;
     if (!silent) log("card dismissed");
@@ -192,9 +257,10 @@
     }
   }
 
-  function showCard(ad, userEl) {
-    if (!cfg.enabled || !ad) return;
+  function showCard(ad, userEl, serveId) {
+    if (!cfg.enabled || !ad || !serveId) return;
     hideCard(true);
+    activeServeId = serveId;
     hostEl = document.createElement("div");
     hostEl.setAttribute("data-adsplus-v5", "");
     hostEl.style.display = "block";
@@ -305,15 +371,38 @@
       setTimeout(ensureWidth, 300);
       startKeeper();
     }
-    log("Ads+ card shown on " + SITE);
+    startImpressionTracking();
+    log("Sponsored campaign shown on " + SITE);
   }
 
   function anchorNow(el) {
     if (!cfg.enabled) return;
-    var ad = pickAd();
-    if (!ad) { warn("no ad configured"); return; }
     preKey = keyOf(el);
-    showCard(ad, el);
+
+    var mobile = window.innerWidth <= 768 ||
+      /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+
+    sendBackgroundMessage({
+      type: "ADSPLUS_SERVE_AD",
+      platform: SITE,
+      mobile: mobile
+    }).then(function (result) {
+      if (!result || !result.ad || !result.serve_id || !result.click_url) return;
+
+      var userEl = el && document.contains(el) ? el : lastUser();
+      if (!userEl) return;
+
+      showCard({
+        id: result.ad.id,
+        sponsor: "Sponsored",
+        text: result.ad.title,
+        desc: result.ad.body,
+        url: result.click_url,
+        logo: "adsplus-logo.svg"
+      }, userEl, result.serve_id);
+    }).catch(function (error) {
+      warn("campaign request failed; no fallback ad shown:", error.message);
+    });
   }
 
   /* Claude: wait for the newly submitted trailing user message to settle. */
@@ -432,7 +521,6 @@
   try {
     chrome.storage.local.get(["adsplus_cfg"], function (stored) {
       cfg = Object.assign({}, cfg, stored && stored.adsplus_cfg ? stored.adsplus_cfg : {});
-      if (!Array.isArray(cfg.ads) || !cfg.ads.length) cfg.ads = ADSPLUS_DEFAULT_ADS;
       attach();
       applyBlocking();
       if (A.detect === "diff") {
@@ -450,7 +538,6 @@
     chrome.storage.onChanged.addListener(function (changes) {
       if (!changes.adsplus_cfg) return;
       cfg = Object.assign({}, cfg, changes.adsplus_cfg.newValue || {});
-      if (!Array.isArray(cfg.ads) || !cfg.ads.length) cfg.ads = ADSPLUS_DEFAULT_ADS;
       applyBlocking();
       if (!cfg.enabled) hideCard(true);
     });

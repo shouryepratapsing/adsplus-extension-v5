@@ -1,15 +1,20 @@
 {
   "manifest_version": 3,
   "name": "Ads+ Extension V5",
-  "version": "5.0.0",
-  "description": "Ads+ sponsored card for ChatGPT, Claude, and Gemini.",
-  "permissions": ["storage"],
+  "version": "5.1.0",
+  "description": "Ads+ sponsored campaigns for ChatGPT, Claude, and Gemini.",
+  "permissions": [
+    "storage"
+  ],
   "host_permissions": [
     "https://chatgpt.com/*",
     "https://claude.ai/*",
-    "https://gemini.google.com/*"
+    "https://gemini.google.com/*",
+    "https://adsplus-api-staging.onrender.com/*"
   ],
-  "background": { "service_worker": "background.js" },
+  "background": {
+    "service_worker": "background.js"
+  },
   "content_scripts": [
     {
       "matches": [
@@ -17,11 +22,30 @@
         "https://claude.ai/*",
         "https://gemini.google.com/*"
       ],
-      "js": ["content.js"],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_idle",
       "all_frames": false
     }
   ],
-  "action": { "default_popup": "popup.html" },
-  "options_ui": { "page": "options.html", "open_in_tab": true }
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "adsplus-logo.svg"
+      ],
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://claude.ai/*",
+        "https://gemini.google.com/*"
+      ]
+    }
+  ]
 }

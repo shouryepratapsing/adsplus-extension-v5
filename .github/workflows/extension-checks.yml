@@ -1,0 +1,41 @@
+name: Ads+ Extension checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check JavaScript syntax
+        run: |
+          node --check background.js
+          node --check content.js
+          node --check popup.js
+          node --check options.js
+      - name: Validate MV3 manifest and staging API permission
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const manifest = JSON.parse(fs.readFileSync('manifest.json', 'utf8'));
+          if (manifest.manifest_version !== 3) throw new Error('Manifest V3 required');
+          if (!manifest.background || manifest.background.service_worker !== 'background.js') {
+            throw new Error('Missing MV3 background service worker');
+          }
+          if (!manifest.host_permissions.includes('https://adsplus-api-staging.onrender.com/*')) {
+            throw new Error('Staging API host permission missing');
+          }
+          for (const file of ['background.js', 'content.js', 'popup.js', 'options.js', 'adsplus-logo.svg']) {
+            if (!fs.existsSync(file)) throw new Error('Missing extension file: ' + file);
+          }
+          const content = fs.readFileSync('content.js', 'utf8');
+          if (content.includes('ADSPLUS_DEFAULT_ADS') || content.includes('pickAd()')) {
+            throw new Error('Local demo ad fallback must not be present');
+          }
+          console.log('Manifest, API permission and source files validated');
+          NODE
