@@ -1,0 +1,21 @@
+name: Ads+ extension staging checks
+
+on:
+  pull_request:
+    paths:
+      - "staging-v5.1/**"
+      - ".github/workflows/extension-staging-checks.yml"
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Check extension scripts and manifest
+        working-directory: staging-v5.1
+        run: sh tests/syntax-check.sh
