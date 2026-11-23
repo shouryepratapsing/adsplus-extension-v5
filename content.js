@@ -96,6 +96,7 @@
   var pendingEl = null, pendingAt = 0;
   var hostEl = null, rootEl = null, videoEl = null, dismissEl = null, unlockAt = 0, ticker = null;
   var activeUserEl = null;
+  var lastRequestedUserKey = null;
   var activeServeId = null, impressionTimer = null, impressionElapsed = 0;
   var impressionLastAt = 0, impressionPending = false, impressionSent = false;
   var watchUser = null, watchKeep = null, watchAttach = null, watchDiff = null, styleEl = null;
@@ -377,7 +378,10 @@
 
   function anchorNow(el) {
     if (!cfg.enabled) return;
-    preKey = keyOf(el);
+    var requestKey = keyOf(el);
+    if (requestKey === lastRequestedUserKey) return;
+    lastRequestedUserKey = requestKey;
+    preKey = requestKey;
 
     var mobile = window.innerWidth <= 768 ||
       /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
@@ -387,6 +391,7 @@
       platform: SITE,
       mobile: mobile
     }).then(function (result) {
+      if (requestKey !== lastRequestedUserKey) return;
       if (!result || !result.ad || !result.serve_id || !result.click_url) return;
 
       var userEl = el && document.contains(el) ? el : lastUser();
