@@ -280,12 +280,9 @@ chrome.runtime.onInstalled.addListener(() => {
   storageGet([LOCAL_CONFIG_KEY]).then((stored) => {
     const current = stored[LOCAL_CONFIG_KEY] || {};
     return storageSet({
-      [LOCAL_CONFIG_KEY]: Object.assign({
-        enabled: true,
-        link: true,
-        video: false,
-        sticky: false
-      }, current)
+      [LOCAL_CONFIG_KEY]: {
+        enabled: current.enabled !== false
+      }
     });
   }).catch((error) => {
     console.error('[Ads+] settings initialization failed:', error.message);

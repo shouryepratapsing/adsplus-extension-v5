@@ -1,38 +1,30 @@
 # Ads+ Extension V5
 
-Manifest V3 browser extension for ChatGPT, Claude, and Gemini.
+Manifest V3 extension for ChatGPT, Claude, and Gemini.
 
-## Default ad
-- Sponsor: Ads+
-- Headline: Discover Ads+
-- Link: https://adsplusprof.me/
-- Transparent in-extension logo: `adsplus-logo.svg`
+## Display format
+- One compact sponsored text link near the submitted prompt.
+- No video ads, pinned bottom placements, image creatives, or local demo ads.
+- The sponsored link is opened through the API's server-tracked /go/{serve_id} URL.
+- The extension records an impression after at least five seconds of visible placement.
 
-The default campaign is only the Ads+ ad. Settings are stored under `adsplus_cfg` and can be changed from the extension's full settings page.
+## Server integration (staging)
+This repository build currently points to:
+https://adsplus-api-staging.onrender.com
+
+The extension:
+- Reads platform, mobile, and link feature flags from GET /v1/config.
+- Registers a persistent extension device with POST /v1/devices/register.
+- Requests campaigns from POST /v1/ads/serve.
+- Records impressions with POST /v1/ad-impressions.
+- Shows no ad when the API is unavailable or no eligible campaign exists.
+
+Local settings contain only an extension on/off switch. Platform and mobile eligibility remain server-controlled.
 
 ## Load unpacked
-1. Extract `extension v5.zip` into a folder.
-2. Open your browser's extensions page and enable Developer Mode if available.
-3. Select **Load unpacked** and choose the extracted `extension v5` folder.
-4. Open ChatGPT, Claude, or Gemini and submit a prompt to test the sponsored card.
+1. Extract the source ZIP into a folder.
+2. Open the browser's extensions page and enable Developer Mode if available.
+3. Select Load unpacked and choose the extracted folder.
+4. Test separately on ChatGPT, Claude, and Gemini, including mobile layouts where the browser supports extensions.
 
-This extension uses page-specific DOM selectors. Because these websites update their interfaces regularly, selectors and exact card placement may need maintenance if a host site changes its markup.
-
-
-## Live campaign API (staging)
-
-The extension now requests campaigns from the Ads+ staging API:
-`https://adsplus-api-staging.onrender.com`
-
-- Reads platform and mobile feature flags from `GET /v1/config`.
-- Registers one persistent extension device with `POST /v1/devices/register`.
-- Requests sponsored campaigns from `POST /v1/ads/serve`.
-- Opens the server-tracked `/go/{serve_id}` click URL.
-- Records an impression only after the sponsored placement has remained visible for at least five seconds using `POST /v1/ad-impressions`.
-- If the API is unavailable or no campaign is eligible, the extension shows no ad; it does not insert a local demo ad.
-
-This repository build points to **staging only**. Do not treat it as a production release or submit it to a store before browser end-to-end testing.
-
-## Download source
-
-[Download the current main-branch source ZIP](https://github.com/shouryepratapsing/adsplus-extension-v5/archive/refs/heads/main.zip)
+This branch remains staging-only. Complete browser end-to-end testing before changing the API base URL or publishing to a store.
