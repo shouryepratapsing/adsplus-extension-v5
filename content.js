@@ -298,7 +298,7 @@
 
     if (cfg.link !== false) {
       var link = document.createElement("a");
-      link.href = ad.url || "https://adsplusprof.me/";
+      link.href = ad.url || "https://app.adsplusprof.me/";
       link.target = "_blank";
       link.rel = "noopener noreferrer";
       link.textContent = ad.text || "Discover Ads+";
