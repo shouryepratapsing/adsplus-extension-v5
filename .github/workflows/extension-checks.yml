@@ -1,7 +1,7 @@
 name: Ads+ Extension checks
 on:
   push:
-    branches: [main]
+    branches: [main, feature/v5-link-only-settings]
   pull_request:
     branches: [main]
 jobs:
@@ -18,7 +18,7 @@ jobs:
           node --check content.js
           node --check popup.js
           node --check options.js
-      - name: Validate MV3 manifest and staging API permission
+      - name: Validate manifest and link-only platform contract
         run: |
           node <<'NODE'
           const fs = require('node:fs');
@@ -30,12 +30,30 @@ jobs:
           if (!manifest.host_permissions.includes('https://adsplus-api-staging.onrender.com/*')) {
             throw new Error('Staging API host permission missing');
           }
+          const expected = ['https://chatgpt.com/*', 'https://claude.ai/*', 'https://gemini.google.com/*'];
+          const matches = manifest.content_scripts.flatMap((entry) => entry.matches);
+          for (const host of expected) {
+            if (!matches.includes(host)) throw new Error('Missing platform match: ' + host);
+          }
           for (const file of ['background.js', 'content.js', 'popup.js', 'options.js', 'adsplus-logo.svg']) {
             if (!fs.existsSync(file)) throw new Error('Missing extension file: ' + file);
           }
           const content = fs.readFileSync('content.js', 'utf8');
-          if (content.includes('ADSPLUS_DEFAULT_ADS') || content.includes('pickAd()')) {
-            throw new Error('Local demo ad fallback must not be present');
+          const background = fs.readFileSync('background.js', 'utf8');
+          for (const platform of ['chatgpt', 'claude', 'gemini']) {
+            if (!content.includes(platform)) throw new Error('Missing content adapter: ' + platform);
           }
-          console.log('Manifest, API permission and source files validated');
+          if (!content.includes('window.innerWidth <= 768') ||
+              !content.includes('Mobile/i.test(navigator.userAgent)')) {
+            throw new Error('Mobile detection was removed');
+          }
+          for (const forbidden of ['cfg.video', 'cfg.sticky', 'cfg.link', 'videoEl', 'applyBlocking']) {
+            if (content.includes(forbidden)) throw new Error('Removed feature returned: ' + forbidden);
+          }
+          if (!background.includes('/v1/config') ||
+              !background.includes('/v1/ads/serve') ||
+              !background.includes('/v1/ad-impressions')) {
+            throw new Error('API integration is incomplete');
+          }
+          console.log('PASS: MV3, all platforms, mobile detection, link-only API');
           NODE
