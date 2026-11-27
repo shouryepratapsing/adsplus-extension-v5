@@ -89,17 +89,17 @@
     }
   }[SITE];
 
-  var cfg = { enabled: true, link: true, video: false, sticky: false };
+  var cfg = { enabled: true };
   var boundBtn = null, boundComposer = null, onSend = null, onKey = null;
   var preKey = null, submitAt = 0;
   var lastSeenEl = null, lastSeenText = null, settling = true, settleTimer = null;
   var pendingEl = null, pendingAt = 0;
-  var hostEl = null, rootEl = null, videoEl = null, dismissEl = null, unlockAt = 0, ticker = null;
+  var hostEl = null, rootEl = null;
   var activeUserEl = null;
   var lastRequestedUserKey = null;
   var activeServeId = null, impressionTimer = null, impressionElapsed = 0;
   var impressionLastAt = 0, impressionPending = false, impressionSent = false;
-  var watchUser = null, watchKeep = null, watchAttach = null, watchDiff = null, styleEl = null;
+  var watchUser = null, watchKeep = null, watchAttach = null, watchDiff = null;
 
   function q(selector) {
     try { return selector ? document.querySelector(selector) : null; } catch (e) { return null; }
@@ -119,41 +119,18 @@
     settling = true;
     settleTimer = setTimeout(function () { settling = false; settleTimer = null; }, ms || A.settleMs || 700);
   }
-  function logoSource(ad) {
-    var logo = ad && typeof ad.logo === "string" ? ad.logo.trim() : "";
-    if (!logo) return chrome.runtime.getURL("adsplus-logo.svg");
-    if (/^https:\/\//i.test(logo)) return logo;
-    return chrome.runtime.getURL(logo.replace(/^\/+/, ""));
-  }
-
   var CSS = ""
     + ":host{all:initial}"
-    + ".card{display:block;width:100%;box-sizing:border-box;margin:10px 0;padding:11px 14px;"
-    + "background:#E6E0F0;border-top:1px solid #6F4E37;border-bottom:1px solid #6F4E37;"
-    + 'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}'
-    + ".row{display:flex;align-items:flex-start;gap:11px}"
-    + ".brand{flex-shrink:0;width:30px;height:30px;object-fit:contain;display:block;margin-top:1px}"
-    + ".text{flex:1;min-width:0;color:#6F4E37}"
-    + ".sponsor{font-size:10px;letter-spacing:.8px;text-transform:uppercase;"
-    + "color:rgba(111,78,55,.55);margin-bottom:2px}"
-    + ".text a{color:#6F4E37;text-decoration:none;font-weight:650;font-size:15px;line-height:1.4}"
-    + ".text a:hover{text-decoration:underline}"
-    + ".headline{font-weight:650;font-size:15px;line-height:1.4;color:#6F4E37}"
-    + ".desc{font-size:12.5px;color:rgba(111,78,55,.7);margin-top:3px;line-height:1.45}"
-    + ".dismiss{flex-shrink:0;background:none;border:none;color:rgba(111,78,55,.5);cursor:pointer;"
-    + "font-size:15px;line-height:1;padding:2px 4px;border-radius:6px;opacity:0;transition:opacity .12s}"
-    + ".card:hover .dismiss,.dismiss:focus-visible{opacity:1}"
-    + ".dismiss[disabled]{opacity:.45;cursor:default}"
-    + ".video{margin:9px 0 2px 41px;border-radius:8px;overflow:hidden;max-width:430px;background:#E5E4E2}"
-    + ".video video{display:block;width:100%;height:auto}"
-    + ".video .ph{padding:24px 12px;text-align:center;font-size:11px;letter-spacing:.7px;color:#6F4E37;background:#E5E4E2}"
-    + "@media(prefers-color-scheme:dark){"
-    + ".card{background:#241C17}"
-    + ".text{color:#E5E4E2}.text a{color:#E5E4E2}.headline{color:#E5E4E2}"
-    + ".desc{color:rgba(229,228,226,.62)}.sponsor{color:rgba(229,228,226,.45)}"
-    + ".dismiss{color:rgba(229,228,226,.5)}.video{background:#1a1512}}"
-    + ":host(.sticky){position:fixed;left:0;right:0;bottom:0;z-index:2147483000}"
-    + ":host(.sticky) .card{margin:0;border-top:none;box-shadow:0 -1px 14px rgba(111,78,55,.16)}";
+    + ".adline{display:flex;align-items:center;gap:7px;width:100%;box-sizing:border-box;"
+    + "margin:8px 0 4px;padding:3px 0;font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;"
+    + "font-size:13px;line-height:1.4;color:#5b514a}"
+    + ".sponsor{flex-shrink:0;font-size:10px;font-weight:700;letter-spacing:.65px;"
+    + "text-transform:uppercase;color:#8a817a}"
+    + ".sep{color:#a39a93}"
+    + ".adline a{color:#6f4e37;text-decoration:none;font-weight:650;min-width:0;overflow-wrap:anywhere}"
+    + ".adline a:hover{text-decoration:underline}"
+    + "@media(prefers-color-scheme:dark){.adline{color:#e5e4e2}.sponsor{color:#aaa19a}"
+    + ".sep{color:#827870}.adline a{color:#e5e4e2}}";
 
   function sendBackgroundMessage(message) {
     return new Promise(function (resolve, reject) {
@@ -235,18 +212,19 @@
   }
 
   function hideCard(silent) {
-    if (ticker) { clearInterval(ticker); ticker = null; }
     stopImpressionTracking();
     activeServeId = null;
     impressionPending = false;
     impressionSent = false;
     if (hostEl && hostEl.parentNode) hostEl.parentNode.removeChild(hostEl);
-    hostEl = null; rootEl = null; videoEl = null; dismissEl = null; activeUserEl = null;
-    if (!silent) log("card dismissed");
+    hostEl = null;
+    rootEl = null;
+    activeUserEl = null;
+    if (!silent) log("sponsored line hidden");
   }
 
   function ensureWidth() {
-    if (!hostEl || cfg.sticky || !hostEl.parentElement) return;
+    if (!hostEl || !hostEl.parentElement) return;
     var container = hostEl.parentElement;
     var outer = container.parentElement;
     if (!outer || container === document.body || outer === document.body || outer === document.documentElement) return;
@@ -259,121 +237,55 @@
   }
 
   function showCard(ad, userEl, serveId) {
-    if (!cfg.enabled || !ad || !serveId) return;
+    if (!cfg.enabled || !ad || !serveId || !ad.url || !ad.text) return;
     hideCard(true);
     activeServeId = serveId;
+
     hostEl = document.createElement("div");
     hostEl.setAttribute("data-adsplus-v5", "");
     hostEl.style.display = "block";
     hostEl.style.width = "100%";
     hostEl.style.boxSizing = "border-box";
-    if (cfg.sticky) hostEl.className = "sticky";
-    rootEl = hostEl.attachShadow({ mode: "closed" });
 
+    rootEl = hostEl.attachShadow({ mode: "closed" });
     var style = document.createElement("style");
     style.textContent = CSS;
     rootEl.appendChild(style);
 
-    var card = document.createElement("div");
-    card.className = "card";
-    var row = document.createElement("div");
-    row.className = "row";
+    var line = document.createElement("div");
+    line.className = "adline";
 
-    var logo = document.createElement("img");
-    logo.className = "brand";
-    logo.src = logoSource(ad);
-    logo.alt = (ad.sponsor || "Ads+") + " logo";
-    logo.decoding = "async";
-    logo.addEventListener("error", function () {
-      logo.src = chrome.runtime.getURL("adsplus-logo.svg");
-    }, { once: true });
-    row.appendChild(logo);
-
-    var text = document.createElement("div");
-    text.className = "text";
-    var sponsor = document.createElement("div");
+    var sponsor = document.createElement("span");
     sponsor.className = "sponsor";
-    sponsor.textContent = ad.sponsor || "Ads+";
-    text.appendChild(sponsor);
+    sponsor.textContent = "Ads+ · Sponsored";
+    line.appendChild(sponsor);
 
-    if (cfg.link !== false) {
-      var link = document.createElement("a");
-      link.href = ad.url || "https://adsplusprof.me/";
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      link.textContent = ad.text || "Discover Ads+";
-      text.appendChild(link);
-    } else {
-      var headline = document.createElement("span");
-      headline.className = "headline";
-      headline.textContent = ad.text || "Discover Ads+";
-      text.appendChild(headline);
-    }
-    if (ad.desc) {
-      var desc = document.createElement("div");
-      desc.className = "desc";
-      desc.textContent = ad.desc;
-      text.appendChild(desc);
-    }
-    row.appendChild(text);
+    var separator = document.createElement("span");
+    separator.className = "sep";
+    separator.textContent = "·";
+    line.appendChild(separator);
 
-    dismissEl = document.createElement("button");
-    dismissEl.className = "dismiss";
-    dismissEl.setAttribute("aria-label", "Dismiss ad");
-    dismissEl.textContent = "×";
-    dismissEl.addEventListener("click", function () { hideCard(); });
-    row.appendChild(dismissEl);
-    card.appendChild(row);
+    var link = document.createElement("a");
+    link.href = ad.url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = ad.text.slice(0, 80);
+    line.appendChild(link);
+    rootEl.appendChild(line);
 
-    if (cfg.video && ad.video) {
-      var wrap = document.createElement("div");
-      wrap.className = "video";
-      videoEl = document.createElement("video");
-      videoEl.src = ad.video;
-      videoEl.muted = true;
-      videoEl.loop = true;
-      videoEl.autoplay = true;
-      videoEl.setAttribute("playsinline", "");
-      videoEl.addEventListener("error", function () {
-        while (wrap.firstChild) wrap.removeChild(wrap.firstChild);
-        var placeholder = document.createElement("div");
-        placeholder.className = "ph";
-        placeholder.textContent = "AD VIDEO UNAVAILABLE";
-        wrap.appendChild(placeholder);
-      });
-      wrap.appendChild(videoEl);
-      card.appendChild(wrap);
-      dismissEl.disabled = true;
-      unlockAt = Date.now() + 5000;
-      ticker = setInterval(function () {
-        var left = Math.ceil((unlockAt - Date.now()) / 1000);
-        if (!dismissEl) { clearInterval(ticker); ticker = null; return; }
-        if (left > 0) dismissEl.textContent = left + "s";
-        else {
-          dismissEl.disabled = false;
-          dismissEl.textContent = "×";
-          clearInterval(ticker);
-          ticker = null;
-        }
-      }, 250);
-      var playPromise = videoEl.play();
-      if (playPromise && playPromise.catch) playPromise.catch(function () {});
-    }
-
-    rootEl.appendChild(card);
     activeUserEl = userEl || lastUser();
-    if (cfg.sticky) {
-      document.body.appendChild(hostEl);
-    } else {
-      var anchor = safeAnchor(A.anchorFor(activeUserEl || null), activeUserEl);
-      if (anchor && anchor.parentElement && anchor.parentElement !== document.body) anchor.after(hostEl);
+    var anchor = safeAnchor(A.anchorFor(activeUserEl || null), activeUserEl);
+    if (anchor && anchor.parentElement && anchor.parentElement !== document.body) {
+      anchor.after(hostEl);
       ensureWidth();
       setTimeout(ensureWidth, 60);
       setTimeout(ensureWidth, 300);
       startKeeper();
+      startImpressionTracking();
+      log("Sponsored link shown on " + SITE);
+    } else {
+      hideCard(true);
     }
-    startImpressionTracking();
-    log("Sponsored campaign shown on " + SITE);
   }
 
   function anchorNow(el) {
@@ -464,7 +376,7 @@
   function startKeeper() {
     if (watchKeep) watchKeep.disconnect();
     watchKeep = new MutationObserver(function () {
-      if (!hostEl || cfg.sticky) return;
+      if (!hostEl) return;
       /* Do not fight the width-promote step. Re-anchor only if the site rebuilt
          or removed the active user-message node/card during its SPA updates. */
       if (hostEl.isConnected && activeUserEl && document.contains(activeUserEl)) return;
@@ -508,26 +420,10 @@
     log("adapter attached for " + SITE);
   }
 
-  function applyBlocking() {
-    var shouldBlock = !!(cfg.enabled && cfg.sticky && A.hostAd);
-    if (shouldBlock && !styleEl) {
-      styleEl = document.createElement("style");
-      styleEl.setAttribute("data-adsplus-v5-style", "");
-      styleEl.textContent = A.hostAd.split(",").map(function (selector) {
-        return selector.trim() + "{display:none !important}";
-      }).join("\n");
-      (document.head || document.documentElement).appendChild(styleEl);
-    } else if (!shouldBlock && styleEl) {
-      styleEl.remove();
-      styleEl = null;
-    }
-  }
-
   try {
     chrome.storage.local.get(["adsplus_cfg"], function (stored) {
       cfg = Object.assign({}, cfg, stored && stored.adsplus_cfg ? stored.adsplus_cfg : {});
       attach();
-      applyBlocking();
       if (A.detect === "diff") {
         lastSeenEl = lastUser();
         lastSeenText = lastSeenEl ? lastSeenEl.textContent : null;
@@ -543,7 +439,6 @@
     chrome.storage.onChanged.addListener(function (changes) {
       if (!changes.adsplus_cfg) return;
       cfg = Object.assign({}, cfg, changes.adsplus_cfg.newValue || {});
-      applyBlocking();
       if (!cfg.enabled) hideCard(true);
     });
   } catch (error) {}
